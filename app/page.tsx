@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import styles from "./page.module.css";
 
 type Candidate = {
   id: number;
@@ -49,104 +50,100 @@ export default function Home() {
   }
 
   return (
-    <main style={{ maxWidth: 1000, margin: "0 auto", padding: "2rem", fontFamily: "system-ui" }}>
-      <h1 style={{ fontSize: 24 }}>応募者AIランキング（ハイブリッド検索）</h1>
-      <p style={{ color: "#666", fontSize: 14 }}>
-        TiDBのベクトル検索 × 全文検索(BM25)を RRF で融合し、応募者をランキングします。
-      </p>
+    <main className={styles.main}>
+      <header className={styles.hero}>
+        <div className={styles.brand}>
+          <span className={styles.logo} aria-hidden="true">
+            JM
+          </span>
+          <h1 className={styles.title}>応募者AIランキング</h1>
+        </div>
+        <p className={styles.tagline}>
+          求人要件を入れると、TiDBの<strong>ベクトル検索（意味）×全文検索（キーワード）</strong>を
+          RRFで融合し、応募者を「合う順」に並べ替えます。
+        </p>
+        <div className={styles.stack}>
+          <span className={styles.pill}>TiDB Cloud</span>
+          <span className={styles.pill}>Gemini Embedding</span>
+          <span className={styles.pill}>Vercel AI SDK</span>
+          <span className={styles.pill}>Next.js</span>
+        </div>
+      </header>
 
-      <label
-        htmlFor="jobDescription"
-        style={{ display: "block", marginTop: 16, fontSize: 13, fontWeight: 600 }}
-      >
-        求人要件（意味検索に使用）
-      </label>
-      <textarea
-        id="jobDescription"
-        rows={4}
-        style={{ width: "100%", padding: 8, fontSize: 14 }}
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
+      <section className={styles.panel}>
+        <div className={styles.field}>
+          <label htmlFor="jobDescription" className={styles.label}>
+            求人要件 <span className={styles.labelHint}>（意味検索に使用）</span>
+          </label>
+          <textarea
+            id="jobDescription"
+            className={styles.textarea}
+            rows={4}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
 
-      <label
-        htmlFor="keywords"
-        style={{ display: "block", marginTop: 12, fontSize: 13, fontWeight: 600 }}
-      >
-        必須キーワード（全文検索に使用） 例: AWS認定
-      </label>
-      <input
-        id="keywords"
-        style={{ width: "100%", padding: 8, fontSize: 14 }}
-        value={keywords}
-        onChange={(e) => setKeywords(e.target.value)}
-      />
+        <div className={styles.field}>
+          <label htmlFor="keywords" className={styles.label}>
+            必須キーワード <span className={styles.labelHint}>（全文検索に使用 / 例: AWS認定）</span>
+          </label>
+          <input
+            id="keywords"
+            className={styles.input}
+            value={keywords}
+            onChange={(e) => setKeywords(e.target.value)}
+          />
+        </div>
 
-      <button
-        onClick={handleMatch}
-        disabled={!canSearch}
-        aria-busy={loading}
-        style={{
-          marginTop: 12,
-          padding: "8px 20px",
-          fontSize: 14,
-          cursor: canSearch ? "pointer" : "not-allowed",
-          opacity: canSearch ? 1 : 0.5,
-          background: "#111",
-          color: "#fff",
-          border: "none",
-          borderRadius: 6,
-        }}
-      >
-        {loading ? "検索中..." : "ハイブリッド検索"}
-      </button>
+        <button
+          onClick={handleMatch}
+          disabled={!canSearch}
+          aria-busy={loading}
+          className={styles.submit}
+        >
+          {loading && <span className={styles.spinner} aria-hidden="true" />}
+          {loading ? "検索中…" : "ハイブリッド検索"}
+        </button>
+      </section>
 
       {error && (
-        <div
-          role="alert"
-          style={{
-            marginTop: 16,
-            padding: "10px 14px",
-            border: "1px solid #fca5a5",
-            background: "#fef2f2",
-            color: "#b91c1c",
-            borderRadius: 6,
-            fontSize: 14,
-          }}
-        >
+        <div role="alert" className={styles.alert}>
           ⚠️ {error}
         </div>
       )}
 
       {searched && !error && hybrid.length === 0 && (
-        <div
-          style={{
-            marginTop: 24,
-            padding: "32px 16px",
-            textAlign: "center",
-            border: "1px dashed #ddd",
-            borderRadius: 8,
-            color: "#666",
-            fontSize: 14,
-          }}
-        >
-          該当する応募者が見つかりませんでした。<br />
+        <div className={styles.empty}>
+          該当する応募者が見つかりませんでした。
+          <br />
           求人要件やキーワードを変えてお試しください。
         </div>
       )}
 
       {searched && !error && hybrid.length > 0 && (
-        <div className="compare-grid">
+        <div className={styles.compare}>
           {/* ビフォー：ベクトルのみ */}
-          <section>
-            <h2 style={{ fontSize: 16, color: "#888" }}>① ベクトル検索のみ（ビフォー）</h2>
+          <section className={styles.column}>
+            <div className={styles.columnHead}>
+              <span className={styles.stageChip}>BEFORE</span>
+              <span className={`${styles.columnTitle} ${styles.columnTitleMuted}`}>
+                ベクトル検索のみ
+              </span>
+            </div>
+            <p className={styles.columnSub}>意味の近さだけで順位付け</p>
             {vectorOnly.map((c, i) => (
               <ResultCard key={c.id} rank={i + 1} c={c} jobDescription={description} muted />
             ))}
           </section>
+
           {/* アフター：ハイブリッド */}
-          <section>
-            <h2 style={{ fontSize: 16 }}>② ハイブリッド検索（アフター）⭐</h2>
+          <section className={`${styles.column} ${styles.columnPrimary}`}>
+            <div className={styles.columnHead}>
+              <span className={`${styles.stageChip} ${styles.stageChipPrimary}`}>AFTER</span>
+              <span className={styles.columnTitle}>ハイブリッド検索</span>
+            </div>
+            <p className={styles.columnSub}>ベクトル × 全文を RRF で融合</p>
             {hybrid.map((c, i) => (
               <ResultCard key={c.id} rank={i + 1} c={c} jobDescription={description} />
             ))}
@@ -168,46 +165,29 @@ function ResultCard({
   jobDescription: string;
   muted?: boolean;
 }) {
+  const topRank = !muted && rank === 1;
   return (
-    <div
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: 8,
-        padding: 12,
-        marginTop: 10,
-        background: muted ? "#fafafa" : "#fff",
-      }}
-    >
-      <strong>
-        {rank}位: {c.name}
-      </strong>
-      <span style={{ marginLeft: 8, color: "#999", fontSize: 12 }}>
-        score: {c.score?.toFixed(4)}
-      </span>
-      <div style={{ marginTop: 4 }}>
-        {c.hitVector && <Badge color="#2563eb">意味検索ヒット</Badge>}
-        {c.hitKeyword && <Badge color="#16a34a">キーワードヒット</Badge>}
+    <article className={`${styles.card} ${muted ? styles.cardMuted : ""}`}>
+      <div className={styles.cardTop}>
+        <span className={`${styles.rank} ${topRank ? styles.rankTop : ""}`}>{rank}</span>
+        <span className={styles.name}>{c.name}</span>
+        <span className={styles.score}>
+          <span className={styles.scoreLabel}>score</span>
+          {c.score?.toFixed(4)}
+        </span>
       </div>
-      <p style={{ fontSize: 13, color: "#555", margin: "6px 0" }}>{c.resume.slice(0, 80)}...</p>
-      {!muted && <ExplainButton jobDescription={jobDescription} candidate={c} />}
-    </div>
-  );
-}
 
-function Badge({ children, color }: { children: React.ReactNode; color: string }) {
-  return (
-    <span
-      style={{
-        fontSize: 11,
-        background: color,
-        color: "#fff",
-        borderRadius: 4,
-        padding: "2px 6px",
-        marginRight: 6,
-      }}
-    >
-      {children}
-    </span>
+      <div className={styles.badges}>
+        {c.hitVector && <span className={`${styles.badge} ${styles.badgeVector}`}>意味検索ヒット</span>}
+        {c.hitKeyword && (
+          <span className={`${styles.badge} ${styles.badgeKeyword}`}>キーワードヒット</span>
+        )}
+      </div>
+
+      <p className={styles.resume}>{c.resume}</p>
+
+      {!muted && <ExplainButton jobDescription={jobDescription} candidate={c} />}
+    </article>
   );
 }
 
@@ -250,24 +230,17 @@ function ExplainButton({
   }
 
   return (
-    <div>
-      <button
-        onClick={handleExplain}
-        disabled={loading}
-        style={{ fontSize: 12, cursor: loading ? "not-allowed" : "pointer", padding: "4px 10px" }}
-      >
-        {loading ? "生成中..." : explanation || explainError ? "🔄 もう一度生成" : "🤖 AIに推薦理由を聞く"}
+    <div className={styles.explainWrap}>
+      <button onClick={handleExplain} disabled={loading} className={styles.explainBtn}>
+        {loading ? "生成中…" : explanation || explainError ? "🔄 もう一度生成" : "🤖 AIに推薦理由を聞く"}
       </button>
       {explanation && (
-        <p
-          aria-live="polite"
-          style={{ fontSize: 12, marginTop: 6, color: "#333", lineHeight: 1.6 }}
-        >
+        <p aria-live="polite" className={styles.explanation}>
           {explanation}
         </p>
       )}
       {explainError && (
-        <p role="alert" style={{ fontSize: 12, marginTop: 6, color: "#b91c1c" }}>
+        <p role="alert" className={styles.explainError}>
           推薦理由の生成に失敗しました。再試行してください。
         </p>
       )}

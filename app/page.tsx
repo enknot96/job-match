@@ -55,20 +55,28 @@ export default function Home() {
         TiDBのベクトル検索 × 全文検索(BM25)を RRF で融合し、応募者をランキングします。
       </p>
 
-      <label style={{ display: "block", marginTop: 16, fontSize: 13, fontWeight: 600 }}>
+      <label
+        htmlFor="jobDescription"
+        style={{ display: "block", marginTop: 16, fontSize: 13, fontWeight: 600 }}
+      >
         求人要件（意味検索に使用）
       </label>
       <textarea
+        id="jobDescription"
         rows={4}
         style={{ width: "100%", padding: 8, fontSize: 14 }}
         value={description}
         onChange={(e) => setDescription(e.target.value)}
       />
 
-      <label style={{ display: "block", marginTop: 12, fontSize: 13, fontWeight: 600 }}>
+      <label
+        htmlFor="keywords"
+        style={{ display: "block", marginTop: 12, fontSize: 13, fontWeight: 600 }}
+      >
         必須キーワード（全文検索に使用） 例: AWS認定
       </label>
       <input
+        id="keywords"
         style={{ width: "100%", padding: 8, fontSize: 14 }}
         value={keywords}
         onChange={(e) => setKeywords(e.target.value)}
@@ -77,6 +85,7 @@ export default function Home() {
       <button
         onClick={handleMatch}
         disabled={!canSearch}
+        aria-busy={loading}
         style={{
           marginTop: 12,
           padding: "8px 20px",
@@ -127,7 +136,7 @@ export default function Home() {
       )}
 
       {searched && !error && hybrid.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 24 }}>
+        <div className="compare-grid">
           {/* ビフォー：ベクトルのみ */}
           <section>
             <h2 style={{ fontSize: 16, color: "#888" }}>① ベクトル検索のみ（ビフォー）</h2>
@@ -250,7 +259,12 @@ function ExplainButton({
         {loading ? "生成中..." : explanation || explainError ? "🔄 もう一度生成" : "🤖 AIに推薦理由を聞く"}
       </button>
       {explanation && (
-        <p style={{ fontSize: 12, marginTop: 6, color: "#333", lineHeight: 1.6 }}>{explanation}</p>
+        <p
+          aria-live="polite"
+          style={{ fontSize: 12, marginTop: 6, color: "#333", lineHeight: 1.6 }}
+        >
+          {explanation}
+        </p>
       )}
       {explainError && (
         <p role="alert" style={{ fontSize: 12, marginTop: 6, color: "#b91c1c" }}>

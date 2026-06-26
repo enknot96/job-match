@@ -34,3 +34,17 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* ビフォー/アフターの2カラム比較。狭い画面では縦積みにする */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+@media (max-width: 720px) {
+  .compare-grid {
+    grid-template-columns: 1fr;
+  }
+}

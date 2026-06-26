@@ -19,19 +19,30 @@ export default function Home() {
   const [vectorOnly, setVectorOnly] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSearch = description.trim().length > 0 && !loading;
 
   async function handleMatch() {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobDescription: description, keywords }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? "検索に失敗しました。");
+      }
       const data = await res.json();
       setHybrid(data.hybrid ?? []);
       setVectorOnly(data.vectorOnly ?? []);
       setSearched(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "検索に失敗しました。時間をおいて再試行してください。");
+      setSearched(false);
     } finally {
       setLoading(false);
     }
@@ -65,12 +76,13 @@ export default function Home() {
 
       <button
         onClick={handleMatch}
-        disabled={loading}
+        disabled={!canSearch}
         style={{
           marginTop: 12,
           padding: "8px 20px",
           fontSize: 14,
-          cursor: "pointer",
+          cursor: canSearch ? "pointer" : "not-allowed",
+          opacity: canSearch ? 1 : 0.5,
           background: "#111",
           color: "#fff",
           border: "none",
@@ -80,7 +92,41 @@ export default function Home() {
         {loading ? "検索中..." : "ハイブリッド検索"}
       </button>
 
-      {searched && (
+      {error && (
+        <div
+          role="alert"
+          style={{
+            marginTop: 16,
+            padding: "10px 14px",
+            border: "1px solid #fca5a5",
+            background: "#fef2f2",
+            color: "#b91c1c",
+            borderRadius: 6,
+            fontSize: 14,
+          }}
+        >
+          ⚠️ {error}
+        </div>
+      )}
+
+      {searched && !error && hybrid.length === 0 && (
+        <div
+          style={{
+            marginTop: 24,
+            padding: "32px 16px",
+            textAlign: "center",
+            border: "1px dashed #ddd",
+            borderRadius: 8,
+            color: "#666",
+            fontSize: 14,
+          }}
+        >
+          該当する応募者が見つかりませんでした。<br />
+          求人要件やキーワードを変えてお試しください。
+        </div>
+      )}
+
+      {searched && !error && hybrid.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 24 }}>
           {/* ビフォー：ベクトルのみ */}
           <section>
@@ -165,17 +211,21 @@ function ExplainButton({
 }) {
   const [explanation, setExplanation] = useState("");
   const [loading, setLoading] = useState(false);
+  const [explainError, setExplainError] = useState(false);
 
   async function handleExplain() {
     setLoading(true);
     setExplanation("");
+    setExplainError(false);
     try {
       const res = await fetch("/api/explain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobDescription, candidate }),
       });
-      if (!res.body) return;
+      if (!res.ok || !res.body) {
+        throw new Error("生成に失敗しました。");
+      }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       while (true) {
@@ -183,6 +233,8 @@ function ExplainButton({
         if (done) break;
         setExplanation((prev) => prev + decoder.decode(value, { stream: true }));
       }
+    } catch {
+      setExplainError(true);
     } finally {
       setLoading(false);
     }
@@ -193,12 +245,17 @@ function ExplainButton({
       <button
         onClick={handleExplain}
         disabled={loading}
-        style={{ fontSize: 12, cursor: "pointer", padding: "4px 10px" }}
+        style={{ fontSize: 12, cursor: loading ? "not-allowed" : "pointer", padding: "4px 10px" }}
       >
-        {loading ? "生成中..." : "🤖 AIに推薦理由を聞く"}
+        {loading ? "生成中..." : explanation || explainError ? "🔄 もう一度生成" : "🤖 AIに推薦理由を聞く"}
       </button>
       {explanation && (
         <p style={{ fontSize: 12, marginTop: 6, color: "#333", lineHeight: 1.6 }}>{explanation}</p>
+      )}
+      {explainError && (
+        <p role="alert" style={{ fontSize: 12, marginTop: 6, color: "#b91c1c" }}>
+          推薦理由の生成に失敗しました。再試行してください。
+        </p>
       )}
     </div>
   );

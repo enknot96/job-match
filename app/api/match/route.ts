@@ -10,67 +10,75 @@ type Row = { id: number; name: string; resume: string };
 
 // 求人要件を受け取り、「ベクトルのみ」と「ハイブリッド」両方のランキングを返す
 export async function POST(req: NextRequest) {
-  const { jobDescription, keywords } = await req.json();
-  const vecStr = `[${(await embedText(jobDescription)).join(",")}]`;
-  const ftsText = (keywords && keywords.trim()) || jobDescription;
+  try {
+    const { jobDescription, keywords } = await req.json();
+    if (typeof jobDescription !== "string" || !jobDescription.trim()) {
+      return NextResponse.json({ error: "求人要件を入力してください。" }, { status: 400 });
+    }
+    const vecStr = `[${(await embedText(jobDescription)).join(",")}]`;
+    const ftsText = (keywords && keywords.trim()) || jobDescription;
 
-  // ① ベクトル検索（意味の近さ）— VEC_COSINE_DISTANCE + HNSW索引
-  const [vecRows] = await db.execute(
-    `SELECT id FROM candidates
-    ORDER BY VEC_COSINE_DISTANCE(embedding, ?) ASC
-    LIMIT ${POOL}`,
-    [vecStr],
-  );
-  // ② 全文検索（キーワード/BM25）— FTS_MATCH_WORD + 全文索引（FTSは db.query 必須）
-  const [ftsRows] = await db.query(
-    `SELECT id FROM candidates
-    WHERE FTS_MATCH_WORD(?, resume)
-    ORDER BY FTS_MATCH_WORD(?, resume) DESC
-    LIMIT ${POOL}`,
-    [ftsText, ftsText],
-  );
+    // ① ベクトル検索（意味の近さ）— VEC_COSINE_DISTANCE + HNSW索引
+    const [vecRows] = await db.execute(
+      `SELECT id FROM candidates
+      ORDER BY VEC_COSINE_DISTANCE(embedding, ?) ASC
+      LIMIT ${POOL}`,
+      [vecStr],
+    );
+    // ② 全文検索（キーワード/BM25）— FTS_MATCH_WORD + 全文索引（FTSは db.query 必須）
+    const [ftsRows] = await db.query(
+      `SELECT id FROM candidates
+      WHERE FTS_MATCH_WORD(?, resume)
+      ORDER BY FTS_MATCH_WORD(?, resume) DESC
+      LIMIT ${POOL}`,
+      [ftsText, ftsText],
+    );
 
-  // IDだけの配列にする
-  // (vecRows as {id:number}[]) = TypeScriptへの型の注釈（「これはidを持つ行の配列だ」と教えるだけ。動作は変えない）
-  // .map((r) => r.id) = 各行 {id: 1} から id だけ抜き出して新しい配列を作る → [1,2,3]
-  const vecIds = (vecRows as { id: number }[]).map((r) => r.id); // [1, 2, 3]
-  const ftsIds = (ftsRows as { id: number }[]).map((r) => r.id); // [3, 4]
-  // 「どっちで拾われたか」判定用の集合を作る
-  // 大前提...  Set と Map は [] でも {} でもなく、専用のクラス
-  const hitVec = new Set(vecIds); // {1, 2, 3}
-  const hitFts = new Set(ftsIds); // {3, 4}
+    // IDだけの配列にする
+    // (vecRows as {id:number}[]) = TypeScriptへの型の注釈（「これはidを持つ行の配列だ」と教えるだけ。動作は変えない）
+    // .map((r) => r.id) = 各行 {id: 1} から id だけ抜き出して新しい配列を作る → [1,2,3]
+    const vecIds = (vecRows as { id: number }[]).map((r) => r.id); // [1, 2, 3]
+    const ftsIds = (ftsRows as { id: number }[]).map((r) => r.id); // [3, 4]
+    // 「どっちで拾われたか」判定用の集合を作る
+    // 大前提...  Set と Map は [] でも {} でもなく、専用のクラス
+    const hitVec = new Set(vecIds); // {1, 2, 3}
+    const hitFts = new Set(ftsIds); // {3, 4}
 
-  // RRF 融合: score = Σ 1/(K + 順位)
-  const score = new Map<number, number>(); // 「id → 合計スコア」の表 / キーが数値・値が数値
-  // score.set(キー, 値) で1組登録、score.get(キー) で取り出す
-  vecIds.forEach((id, i) => score.set(id, (score.get(id) ?? 0) + 1 / (K + i + 1)));
-  ftsIds.forEach((id, i) => score.set(id, (score.get(id) ?? 0) + 1 / (K + i + 1)));
+    // RRF 融合: score = Σ 1/(K + 順位)
+    const score = new Map<number, number>(); // 「id → 合計スコア」の表 / キーが数値・値が数値
+    // score.set(キー, 値) で1組登録、score.get(キー) で取り出す
+    vecIds.forEach((id, i) => score.set(id, (score.get(id) ?? 0) + 1 / (K + i + 1)));
+    ftsIds.forEach((id, i) => score.set(id, (score.get(id) ?? 0) + 1 / (K + i + 1)));
 
-  // ハイブリッドの上位を確定
-  const hybridIds = [...score.entries()] // [[1,0.0164],[2,0.0161],[3,0.0323],[4,0.0161]]
-    .sort((a, b) => b[1] - a[1]) // スコア(2番目)で大きい順に並べ替え
-    .slice(0, TOP) // 先頭TOP件（=5件）
-    .map(([id]) => id); // [id,score]ペアからidだけ取り出す
-  // 比較用：ベクトルのみの上位
-  const vectorOnlyIds = vecIds.slice(0, TOP); // 比較用：ベクトル検索だけの上位
+    // ハイブリッドの上位を確定
+    const hybridIds = [...score.entries()] // [[1,0.0164],[2,0.0161],[3,0.0323],[4,0.0161]]
+      .sort((a, b) => b[1] - a[1]) // スコア(2番目)で大きい順に並べ替え
+      .slice(0, TOP) // 先頭TOP件（=5件）
+      .map(([id]) => id); // [id,score]ペアからidだけ取り出す
+    // 比較用：ベクトルのみの上位
+    const vectorOnlyIds = vecIds.slice(0, TOP); // 比較用：ベクトル検索だけの上位
 
-  // 表示に必要なIDの本文をまとめて取得
-  const needIds = [...new Set([...hybridIds, ...vectorOnlyIds])];
-  if (needIds.length === 0) return NextResponse.json({ hybrid: [], vectorOnly: [] });
-  const [rows] = await db.query("SELECT id, name, resume FROM candidates WHERE id IN (?)", [
-    needIds,
-  ]);
-  const byId = new Map((rows as Row[]).map((r) => [r.id, r]));
+    // 表示に必要なIDの本文をまとめて取得
+    const needIds = [...new Set([...hybridIds, ...vectorOnlyIds])];
+    if (needIds.length === 0) return NextResponse.json({ hybrid: [], vectorOnly: [] });
+    const [rows] = await db.query("SELECT id, name, resume FROM candidates WHERE id IN (?)", [
+      needIds,
+    ]);
+    const byId = new Map((rows as Row[]).map((r) => [r.id, r]));
 
-  const build = (ids: number[]) =>
-    ids.map((id) => ({
-      ...byId.get(id)!,
-      score: score.get(id),
-      hitVector: hitVec.has(id),
-      hitKeyword: hitFts.has(id),
-    }));
+    const build = (ids: number[]) =>
+      ids.map((id) => ({
+        ...byId.get(id)!,
+        score: score.get(id),
+        hitVector: hitVec.has(id),
+        hitKeyword: hitFts.has(id),
+      }));
 
-  return NextResponse.json({ hybrid: build(hybridIds), vectorOnly: build(vectorOnlyIds) });
+    return NextResponse.json({ hybrid: build(hybridIds), vectorOnly: build(vectorOnlyIds) });
+  } catch (e) {
+    console.error("[/api/match] failed:", e);
+    return NextResponse.json({ error: "検索に失敗しました。時間をおいて再試行してください。" }, { status: 500 });
+  }
 }
 
 // ==============================================================

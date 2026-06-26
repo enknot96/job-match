@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { embedText } from "@/lib/embed";
+import { mutationForbiddenResponse } from "@/lib/guard";
 
 const DUMMY = [
   // --- フロント強い × AWS認定あり（両取り＝上位本命） ---
@@ -161,16 +162,24 @@ const DUMMY = [
   },
 ];
 
-// 開発用: 何度叩いてもOKなように全消し→再投入
+// 開発用: 何度叩いてもOKなように全消し→再投入（本番では無効化）
 export async function POST() {
-  await db.execute("DELETE FROM candidates");
-  for (const c of DUMMY) {
-    const vec = await embedText(c.resume);
-    await db.execute("INSERT INTO candidates (name, resume, embedding) VALUES (?, ?, ?)", [
-      c.name,
-      c.resume,
-      `[${vec.join(",")}]`,
-    ]);
+  const forbidden = mutationForbiddenResponse();
+  if (forbidden) return forbidden;
+
+  try {
+    await db.execute("DELETE FROM candidates");
+    for (const c of DUMMY) {
+      const vec = await embedText(c.resume);
+      await db.execute("INSERT INTO candidates (name, resume, embedding) VALUES (?, ?, ?)", [
+        c.name,
+        c.resume,
+        `[${vec.join(",")}]`,
+      ]);
+    }
+    return NextResponse.json({ inserted: DUMMY.length });
+  } catch (e) {
+    console.error("[/api/seed] failed:", e);
+    return NextResponse.json({ error: "シードに失敗しました。" }, { status: 500 });
   }
-  return NextResponse.json({ inserted: DUMMY.length });
 }

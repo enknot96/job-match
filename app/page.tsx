@@ -1,15 +1,7 @@
 "use client";
 import { useState } from "react";
 import styles from "./page.module.css";
-
-type Candidate = {
-  id: number;
-  name: string;
-  resume: string;
-  score: number;
-  hitVector: boolean;
-  hitKeyword: boolean;
-};
+import type { Candidate } from "@/lib/types";
 
 export default function Home() {
   const [description, setDescription] = useState(

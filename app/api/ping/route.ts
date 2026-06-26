@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { queryRows } from "@/lib/db";
 import { embedText } from "@/lib/embed";
 
 export async function GET() {
   try {
     // 1) TiDB 接続テスト
-    const [rows] = await db.query("SELECT 1 AS ok");
-    const dbOk = (rows as { ok: number }[])[0]?.ok;
+    const rows = await queryRows<{ ok: number }>("SELECT 1 AS ok");
+    const dbOk = rows[0]?.ok;
     // 2) Gemini Embedding テスト
     const vec = await embedText("接続テスト用のサンプル文です");
     return NextResponse.json({

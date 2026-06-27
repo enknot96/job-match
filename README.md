@@ -7,7 +7,7 @@
 > 「ベクトル検索だけ」と「ハイブリッド検索」を**ビフォー/アフターで並べて比較**できるのが特徴です。
 > 全文検索による"救済"で、意味検索だけでは埋もれていた応募者が浮上する様子がひと目で分かります。
 
-<!-- TODO: ここにデモのスクリーンショット（ビフォー/アフター比較画面）を貼る -->
+![デモ画面：左「ベクトル検索のみ」と右「ハイブリッド検索」のビフォー/アフター比較](docs/demo.png)
 
 ---
 
@@ -120,18 +120,19 @@ GOOGLE_GENERATIVE_AI_API_KEY=...
 
 ### 3. テーブル作成（TiDB）
 
-<!-- TODO: 実テーブルの `SHOW CREATE TABLE candidates;` の結果に差し替える -->
-
 ```sql
--- ※下記は構成例です。実際の定義に合わせて調整してください。
 CREATE TABLE candidates (
-    id        BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name      VARCHAR(255) NOT NULL,
-    resume    TEXT NOT NULL,
-    embedding VECTOR(1536) NOT NULL,
+    id         BIGINT       NOT NULL AUTO_INCREMENT,
+    name       VARCHAR(255) NOT NULL,
+    resume     TEXT         NOT NULL,
+    embedding  VECTOR(1536) DEFAULT NULL,
+    created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    -- 意味検索: コサイン距離の HNSW 索引
     VECTOR INDEX idx_embedding ((VEC_COSINE_DISTANCE(embedding))),
-    FULLTEXT INDEX idx_resume (resume) WITH PARSER MULTILINGUAL
-);
+    -- 全文検索: 多言語パーサ（日本語対応）
+    FULLTEXT INDEX idx_resume_fts (resume) WITH PARSER MULTILINGUAL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 ```
 
 ### 4. ダミーデータ投入（ローカルのみ）

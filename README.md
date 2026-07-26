@@ -48,7 +48,7 @@ flowchart TD
     M -->|hybrid / vectorOnly| P
 
     P -->|POST /api/explain| E[explain route]
-    E -->|推薦理由を生成・ストリーミング| G2["Gemini<br/>(gemini-2.5-flash-lite)"]
+    E -->|推薦理由を生成・ストリーミング| G2["Gemini<br/>(gemini-3.5-flash-lite)"]
     G2 --> P
 ```
 
@@ -87,7 +87,7 @@ flowchart TD
 |------|----------|
 | フレームワーク | Next.js 16（App Router / Turbopack）, React 19 |
 | AI 連携 | Vercel AI SDK v6（`ai`）, `@ai-sdk/google` |
-| 埋め込み / 生成 | Gemini Embedding（`gemini-embedding-001`）, Gemini（`gemini-2.5-flash-lite`） |
+| 埋め込み / 生成 | Gemini Embedding（`gemini-embedding-001`）, Gemini（`gemini-3.5-flash-lite`） |
 | データベース | TiDB Cloud（ベクトル検索 + 全文検索）, `mysql2` |
 | 言語 | TypeScript（`strict`） |
 | デプロイ | Vercel |

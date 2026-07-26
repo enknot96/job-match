@@ -1,0 +1,7 @@
+<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+  <rect width="40" height="40" rx="10" fill="#ffffff"/>
+  <g style="isolation:isolate">
+    <circle cx="16" cy="20" r="12" fill="#2563eb"/>
+    <circle cx="24" cy="20" r="12" fill="#15a34a" style="mix-blend-mode:multiply"/>
+  </g>
+</svg>

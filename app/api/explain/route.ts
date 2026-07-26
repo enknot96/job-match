@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = streamText({
-      model: google("gemini-2.5-flash-lite"),
+      model: google("gemini-3.5-flash-lite"),
       system:
         "あなたは採用アシスタントです。応募者がなぜこの求人にマッチするかを、採用担当者向けに150字以内で簡潔に日本語で説明してください。誇張せず、経歴の事実に基づいて述べること。",
       prompt: `求人要件:
